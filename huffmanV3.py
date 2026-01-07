@@ -1,10 +1,7 @@
+import argparse
 import heapq
 import json
 from bitarray import bitarray
-
-with open('huffman_file.txt','r', encoding="utf-8") as file:
-    dane = file.read()
-    
 
 
 class Node:
@@ -31,11 +28,18 @@ class Node:
         self.child_right = None
         
         
-        
     def __repr__(self):
         #return f"{self.value}, left child: {self.child_left}, right child: {self.child_right}"
         return f"{self.value,self.name}"
-       
+    
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("-f", "--file", required=True, help="directory of the file to compress")
+    parser.add_argument("-b", "--binary", default="results.bin", help="zipped output file")
+    return parser.parse_args()
+    
+
 def concordance(doc):
     if type(doc) != str:
         return "not text"
@@ -47,12 +51,6 @@ def concordance(doc):
             con[letter] += 1
             
     return con
-
-con = concordance(dane)
-#print(con)
-result = ''
-codes = {}
-nodes = dict()
 
 
 def mark(node, current_code=""):
@@ -110,19 +108,42 @@ def huffman(con):
     
     return nodes
 
+if __name__ == "__main__":
+    
+    args = parse_args()
+    
+    
+    with open(args.file,'r', encoding="utf-8") as file:
+        dane = file.read()
 
 
-huffman(con)
+    con = concordance(dane)
+    #print(con)
+    result = ''
+    codes = {}
+    nodes = dict()
 
-for d in dane:
-    result += codes[d]
-#print(result)
+    huffman(con)
 
-b = bitarray(result)                
+    for d in dane:
+        result += codes[d]
+    #print(result)
 
-with open('results.bin', 'wb') as f:
-    header = json.dumps(codes).encode('utf-8')
-    f.write(len(header).to_bytes(4, 'big'))  
-    f.write(header)
-    f.write(len(result).to_bytes(4, 'big'))  
-    b.tofile(f)          
+    b = bitarray(result)  
+    
+    codes_leaves = {}
+    for key in codes.keys():
+        if len(key) == 1:
+            codes_leaves.update({
+                key: codes[key] 
+            })
+                      
+
+    with open(args.binary, 'wb') as f:
+        header = json.dumps(codes_leaves).encode('utf-8')
+        f.write(len(header).to_bytes(4, 'big'))  
+        f.write(header)
+        f.write(len(result).to_bytes(4, 'big'))  
+        b.tofile(f)          
+
+    
